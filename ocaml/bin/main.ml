@@ -7,22 +7,20 @@ let speclist = [ "--input", Stdlib.Arg.Set_string input_file, "input file path" 
 
 let result_fmt =
   Printf.sprintf
-    "The input file contains %d lines of text and %d characters. The execution of this \
-     script took %f ms"
+    {|The input file contains %d lines of text and %d characters. The execution of this script took %f ms.|}
 ;;
 
 let () =
   let start = Unix.gettimeofday () in
   Stdlib.Arg.parse speclist (fun _ -> ()) usage_msg;
-  let read_lines chan =
-    let rec loop_lines lines chars =
-      match In_channel.input_line chan with
-      | Some line -> loop_lines (lines + 1) (line |> String.length |> ( + ) chars)
-      | None -> lines, chars
-    in
-    loop_lines 0 0
+  let open In_channel in
+  let lines, chars =
+    with_file
+      !input_file
+      ~f:
+        (fold_lines ~init:(0, 0) ~f:(fun (lines, chars) line ->
+           lines + 1, chars + String.length line))
   in
-  let lines, chars = In_channel.with_file !input_file ~f:read_lines in
   let fin = Unix.gettimeofday () in
   let dur = (fin -. start) *. 1000.0 in
   result_fmt lines chars dur |> print_endline
